@@ -8,6 +8,8 @@ import random
 
 """
 This proram access many stories in truyenyy.com and write to HTML file.
+- Change the name to set link to the story
+- change the search parameter in extractTitle and extractContent to get those items.
 
 Implemented parts:
 - Dealing with server errors
@@ -69,15 +71,16 @@ class TruyenyyScraper(object):
 
     def extractTitle(self, soup):
         """ Extract the chapter title of most truyenyy pages."""
-        return soup.find("h1", class_="chap-title sans-serif-font")
+        return soup.find("h1", class_="chapter-title")
 
     def extractContent(self, soup):
-        """ Extract the main content of most truyenyy pages."""
-        return soup.find("div", id="inner_chap_content_1")
+        """ Extract the main content of most truyenyy pages. The tag changes depending on the story series."""
+        return soup.find("div", class_="inner")
 
     def setChapterUrl(self, page):
         """ Set the current chapter URL, can be used to continue scraping if the last scraper crashed."""
         newUrl = self.storyUrl + str(page) + ".html"
+        self.currentChapter = page
         return newUrl
 
     # Return requests.model.Response
@@ -129,13 +132,14 @@ def main(storyName, saveFileName):
     try:
         scraper = TruyenyyScraper(str(storyName), str(saveFileName))
         scraper.openFile()
-        url = scraper.setChapterUrl(1)
+        url = scraper.setChapterUrl(32)
         response = scraper.getResponseObject(url)
-
+        
         while(response.status_code < 400):
             print("Next chapter: " + str(scraper.currentChapter))
             time.sleep(random.uniform(0, 3))
             soup = scraper.getSoup(response, "lxml")
+            #print(soup)
             scraper.addNextChapter(soup)
             scraper.chapterNum = scraper.chapterNum+1
             if(scraper.chapterNum >= 10):
@@ -151,4 +155,4 @@ def main(storyName, saveFileName):
 
 
 if __name__ == "__main__":
-    main("quan-than", "quan-than.html")
+    main("quan-truong", "quan-truong.html")
