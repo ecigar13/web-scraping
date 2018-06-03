@@ -5,6 +5,7 @@ from requests.exceptions import HTTPError
 import time
 import os
 import random
+import sys
 
 """
 This proram access many stories in truyenyy.com and write to HTML file.
@@ -26,7 +27,7 @@ class TruyenyyScraper(object):
     chapters = []
     chapterNum = 1
     currentChapter = 1
-    initialUrl = "https://truyenyy.com/truyen/"
+    initialUrl = "http://truyenfull.vn/"
 
     def __init__(self, storyName, outputFile):
         self.storyUrl = self.initialUrl + str(storyName) + "/chuong-"
@@ -38,16 +39,17 @@ class TruyenyyScraper(object):
 
     def writeHeadHtml(self):
         """Write the beginning part of HTML file so the written file is not garbled when viewed in browser"""
-        self.out.write("""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-            <html>
-            <head>
-                <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-                <title></title>
-                <meta name="generator" content="LibreOffice 5.1.6.2 (Linux)"/>
-                <meta name="created" content="00:00:00"/>
-                <meta name="changed" content="00:00:00"/>
-            </head>
-            <body lang="en-US" dir="ltr">""")
+        if(currentChapter > 1):
+            self.out.write("""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+                <html>
+                <head>
+                    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+                    <title></title>
+                    <meta name="generator" content="LibreOffice 5.1.6.2 (Linux)"/>
+                    <meta name="created" content="00:00:00"/>
+                    <meta name="changed" content="00:00:00"/>
+                </head>
+                <body lang="en-US" dir="ltr">""")
 
     def writeToFile(self):
         """Flush the buffer to OS then to disk when buffer reaches a certain size in case of a crash """
@@ -70,15 +72,19 @@ class TruyenyyScraper(object):
 
     def extractTitle(self, soup):
         """ Extract the chapter title of most truyenyy pages."""
-        return soup.find("h1", class_="chapter-title")
+        temp = soup.find("title")
+        print(temp)
+        return temp
 
     def extractContent(self, soup):
         """ Extract the main content of most truyenyy pages. The tag changes depending on the story series."""
-        return soup.find("div", class_="inner")
+        temp = soup.find("div", {"class": "chapter-c"})
+        #print(temp)
+        return temp
 
     def setChapterUrl(self, page):
         """ Set the current chapter URL, can be used to continue scraping if the last scraper crashed."""
-        newUrl = self.storyUrl + str(page) + ".html"
+        newUrl = self.storyUrl + str(page) + '/'
         self.currentChapter = page
         return newUrl
 
@@ -92,7 +98,8 @@ class TruyenyyScraper(object):
                 r.raise_for_status()
             except HTTPError as errh:
                 print("Http Error:", errh)
-                print("It is likely that the program has reached the end of the story and is not an error.")
+                print(
+                    "It is likely that the program has reached the end of the story and is not an error.")
                 self.closeFile()
                 exit(0)
             except requests.exceptions.ConnectionError as errc:
@@ -131,13 +138,13 @@ def main(storyName, saveFileName):
     try:
         scraper = TruyenyyScraper(str(storyName), str(saveFileName))
         scraper.openFile()
-        url = scraper.setChapterUrl(32)
+        url = scraper.setChapterUrl(1211)
         response = scraper.getResponseObject(url)
-        
-        while(response.status_code < 400):
+
+        while(response.status_code < 300):
             print("Next chapter: " + str(scraper.currentChapter))
             time.sleep(random.uniform(0, 3))
-            soup = scraper.getSoup(response, "lxml")
+            soup = scraper.getSoup(response, 'html.parser')
             #print(soup)
             scraper.addNextChapter(soup)
             scraper.chapterNum = scraper.chapterNum+1
@@ -145,6 +152,7 @@ def main(storyName, saveFileName):
                 scraper.writeToFile()
 
             url = scraper.setChapterUrl(scraper.currentChapter)
+            print(url)
             response = scraper.getResponseObject(url)
 
     except KeyboardInterrupt:
@@ -154,4 +162,4 @@ def main(storyName, saveFileName):
 
 
 if __name__ == "__main__":
-main("quan-truong", "quan-truong.html")
+main(str(sys.argv[1]), str(sys.argv[2]))
